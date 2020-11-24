@@ -73,7 +73,7 @@ from pprint import pprint
 def parse_args():
     parser = OptionParser()
     parser.add_option("-s", "--spw-server", type="string", dest="spw_server",
-            help="Spacewalk Server (default: localhost)", default="localhost")
+            help="Spacewalk Server")
     parser.add_option("-u", "--spw-user", type="string", dest="spw_user",
             help="Spacewalk User")
     parser.add_option("-p", "--spw-pass", type="string", dest="spw_pass",
@@ -139,6 +139,7 @@ def main():
     to_delete=[]
     to_delete_ids=[]
     to_keep={}
+    skipped_modules=[]
     # get all packages
     if options.wo_channel is None and options.lucene is None and options.all_channel is None:
         print "Getting all packages"
@@ -149,6 +150,11 @@ def main():
         newpkgs = spacewalk.channel.software.listLatestPackages(spacekey, options.channel)
         print " - Amount: %d" % len(newpkgs)
         for pkg in allpkgs:
+            if ".module+" in pkg['release']:
+                if options.debug:
+                    print "Skipping Module-package:  %s-%s-%s (id %s)" % (pkg['name'], pkg['version'], pkg['release'], pkg['id'])
+                skipped_modules.append(pkg)
+                continue
             if options.max:
                 if len(to_delete) > options.max:
                     print "Hit max number of packages, breaking from loop"
@@ -171,6 +177,8 @@ def main():
             pprint(to_delete)
             print "List of package IDs to delete:"
             pprint(to_delete_ids)
+            print "List of skipped module packages:"
+            pprint(skipped_modules)
         print "Removing packages from channel..."
 
     if options.all_channel is not None:
@@ -180,6 +188,11 @@ def main():
         print " - Amount: %d" % len(allchannels)
 	pprint(allchannels)
         for chan in allchannels:
+            if ".module+" in pkg['release']:
+                if options.debug:
+                    print "Skipping Module-package:  %s-%s-%s (id %s)" % (pkg['name'], pkg['version'], pkg['release'], pkg['id'])
+                skipped_modules.append(pkg)
+                continue
             if options.max:
                 if len(to_delete) > options.max:
                     print "Hit max number of packages, breaking from loop"
@@ -216,6 +229,7 @@ def main():
                     print "Marked:  %s-%s-%s (id %s)" % (pkg['name'], pkg['version'], pkg['release'], pkg['id'])
         pprint(to_delete)
         pprint(to_delete_ids)
+        pprint(skipped_modules)
         print "Removing packages from all channels..."
 
     if options.wo_channel is not None:
